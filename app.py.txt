@@ -1,0 +1,47 @@
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+# Viber API токен
+VIBER_TOKEN = "48f34f6da4e7d7f6-9f7da0b531a7d4a3-14f6009edb92e1e6"
+VIBER_API_URL = "https://chatapi.viber.com/pa/send_message"
+
+# Функція для відправки повідомлення у Viber
+def send_viber_message(receiver_id, text):
+    headers = {"X-Viber-Auth-Token": VIBER_TOKEN}
+    data = {
+        "receiver": receiver_id,
+        "min_api_version": 1,
+        "sender": {"name": "AutoVikup24", "avatar": "https://example.com/logo.png"},
+        "tracking_data": "tracking_data",
+        "type": "text",
+        "text": text
+    }
+    requests.post(VIBER_API_URL, json=data, headers=headers)
+
+# Обробка вебхука від Viber
+@app.route("/viber/webhook", methods=["POST"])
+def viber_webhook():
+    data = request.json
+    if data["event"] == "message":
+        sender_id = data["sender"]["id"]
+        message_text = data["message"]["text"].lower()
+        
+        if "продати авто" in message_text:
+            send_viber_message(sender_id, "Вкажіть марку та модель авто")
+        elif "toyota" in message_text or "ford" in message_text:
+            send_viber_message(sender_id, "Який рік випуску вашого авто?")
+        else:
+            send_viber_message(sender_id, 'Дякуємо! Менеджер скоро зв’яжеться з вами.')
+    return jsonify(status=200)
+
+# Встановлення вебхука (потрібно запустити окремо)
+def set_webhook():
+    webhook_url = "https://your-server.com/viber/webhook"  # Вкажіть URL свого сервера
+    headers = {"X-Viber-Auth-Token": VIBER_TOKEN}
+    data = {"url": webhook_url, "event_types": ["message"]}
+    requests.post("https://chatapi.viber.com/pa/set_webhook", json=data, headers=headers)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
